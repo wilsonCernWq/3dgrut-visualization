@@ -57,11 +57,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Install OpenGL development libraries
+      - name: Install display and windowing development libraries
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libegl-dev libgl-dev libgles-dev libglx-dev libopengl-dev
+            libegl-dev libgl-dev libgles-dev libglx-dev libopengl-dev \
+            libwayland-dev wayland-protocols libxkbcommon-dev \
+            libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
       - name: Build Standalone
         run: |
           git config --global --add safe.directory "$(pwd)"
