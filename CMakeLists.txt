@@ -65,7 +65,13 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 endif()
 
-if(NOT CMAKE_CUDA_ARCHITECTURES)
+# "native" is supported by newer CMake, but older versions (e.g. 3.23) reject it.
+# Normalize cached values as well so existing build trees recover automatically.
+if(CMAKE_VERSION VERSION_LESS "3.24")
+  if(NOT CMAKE_CUDA_ARCHITECTURES OR CMAKE_CUDA_ARCHITECTURES STREQUAL "native")
+    set(CMAKE_CUDA_ARCHITECTURES "all-major" CACHE STRING "" FORCE)
+  endif()
+elseif(NOT CMAKE_CUDA_ARCHITECTURES)
   set(CMAKE_CUDA_ARCHITECTURES "native" CACHE STRING "" FORCE)
 endif()
 
