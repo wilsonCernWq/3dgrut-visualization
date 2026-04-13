@@ -57,6 +57,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Install OpenGL development libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl-dev libgl-dev libgles-dev libglx-dev
       - name: Build Standalone
         run: |
           git config --global --add safe.directory "$(pwd)"
