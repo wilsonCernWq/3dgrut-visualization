@@ -16,7 +16,7 @@ Usage::
 Prerequisites:
 
   - **anari**: ``pip install gaussian-viewer[polyscope]`` + CUDA-GL interop
-    (``pip install cuda-python cupy``, or ``threedgrut.gui.ps_extension``).
+    (``pip install cuda-python cupy``, or ``gl_interop``).
   - **3dgrt / 3dgut**: editable install of threedgrut + tracers, CUDA, torch,
     hydra-core, polyscope.  Configs at ``<repo>/configs/`` are loaded via Hydra.
 """
@@ -58,7 +58,7 @@ def _init_polyscope_cugl() -> None:
         import cuda  # noqa: F401
         import cupy  # noqa: F401
     except ImportError:
-        from threedgrut.gui.ps_extension import initialize_cugl_interop
+        from .gl_interop import initialize_cugl_interop
 
         initialize_cugl_interop()
 

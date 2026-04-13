@@ -160,6 +160,13 @@ if(BUILD_PYTHON_BINDINGS)
 
   pybind11_add_module(_gaussian_renderer_core python_bindings.cpp)
   target_link_libraries(_gaussian_renderer_core PRIVATE gaussian_renderer_core)
+
+  # If CUDA is available, we build the CUDA-GL interop into the main module
+  if(CUDAToolkit_FOUND)
+    target_compile_definitions(_gaussian_renderer_core PRIVATE USE_CUGL_INTEROP=1)
+    target_link_libraries(_gaussian_renderer_core PRIVATE CUDA::cudart)
+    message(STATUS "CUDA toolkit found, CUDA-GL interop bindings enabled")
+  endif()
 endif()
 
 set(_all_targets commandline_viewer interactive_viewer)

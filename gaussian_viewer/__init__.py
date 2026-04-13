@@ -84,6 +84,8 @@ except ImportError as e1:
             "If you are using a standalone build, you may need to set:\n" + _hint
         ) from e2
 
+from .gl_interop import initialize_cugl_interop
+
 __all__ = [
     "CameraState",
     "CUDAFrameContext",
@@ -91,4 +93,5 @@ __all__ = [
     "InitOptions",
     "MappedCUDAFrame",
     "RendererConfig",
+    "initialize_cugl_interop",
 ]
