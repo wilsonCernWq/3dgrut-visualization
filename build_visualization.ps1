@@ -5,8 +5,8 @@
 
 .DESCRIPTION
     Configures and builds the superbuild CMakeLists.txt that automatically
-    downloads ANARI-SDK, VisRTX, and OptiX headers, then builds gaussian_viewer
-    against them.
+    downloads ANARI-SDK, VisRTX (which pulls OptiX headers), then builds
+    gaussian_viewer against them.
 
         visualization/
         ├── CMakeLists.txt  (superbuild)
@@ -16,14 +16,9 @@
         └── install/        (shared CMAKE_INSTALL_PREFIX)
 
     Prerequisites: CMake 3.17+, CUDA 12+, a C++17 compiler (Visual Studio).
-    OptiX SDK is downloaded automatically unless -OptiXDir is given.
 
 .PARAMETER Root
     Base directory for the entire tree (default: this script's directory).
-
-.PARAMETER OptiXDir
-    Path to a local OptiX SDK.  When omitted the superbuild downloads the
-    headers from https://github.com/NVIDIA/optix-dev automatically.
 
 .PARAMETER BuildType
     CMake build type (default: Release).
@@ -41,12 +36,11 @@
 .EXAMPLE
     .\build_visualization.ps1
     .\build_visualization.ps1 -BuildType RelWithDebInfo
-    .\build_visualization.ps1 -OptiXDir "D:\OptiX SDK 8.0.0" -Generator Ninja
+    .\build_visualization.ps1 -Generator Ninja
 #>
 
 param (
     [string]$Root       = "",
-    [string]$OptiXDir   = "",
     [string]$BuildType  = "Release",
     [string]$Generator  = "",
     [int]$Jobs          = 0,
@@ -203,7 +197,6 @@ Write-Host "  BuildType:   $BuildType"
 Write-Host "  Generator:   $(if ($generatorArgs.Count) { $generatorArgs[1] } else { '(default)' })"
 Write-Host "  Jobs:        $Jobs"
 Write-Host "  CUDA_HOME:   $env:CUDA_HOME"
-Write-Host "  OptiX SDK:   $(if ($OptiXDir) { $OptiXDir } else { '(auto-detect / download)' })"
 Write-Host ""
 
 # ── optional clean ───────────────────────────────────────────────────────────
@@ -228,10 +221,6 @@ $cmakeArgs += @("-B", $BuildDir)
 $cmakeArgs += "-DCMAKE_BUILD_TYPE=$BuildType"
 $cmakeArgs += "-DCMAKE_INSTALL_PREFIX=$InstallDir"
 $cmakeArgs += "-DBUILD_PYTHON_BINDINGS=ON"
-
-if ($OptiXDir -ne "") {
-    $cmakeArgs += "-DOPTIX_ROOT=$OptiXDir"
-}
 
 cmake @cmakeArgs
 Assert-ExitCode "Superbuild configure"

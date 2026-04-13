@@ -3,8 +3,8 @@
 # Build the visualization stack (ANARI-SDK, VisRTX, GaussianViewer) via the
 # CMake superbuild in this directory.
 #
-# The superbuild automatically downloads ANARI-SDK, VisRTX, and (optionally)
-# OptiX headers, then builds gaussian_viewer against them.
+# The superbuild automatically downloads ANARI-SDK, VisRTX (which pulls OptiX
+# headers), then builds gaussian_viewer against them.
 #
 #   visualization/
 #   ├── CMakeLists.txt  (superbuild)
@@ -14,7 +14,6 @@
 #   └── install/        (shared CMAKE_INSTALL_PREFIX)
 #
 # Prerequisites: CMake 3.17+, CUDA 12+, a C++17 compiler.
-# OptiX SDK is downloaded automatically unless --optix-dir is given.
 
 set -euo pipefail
 
@@ -24,8 +23,6 @@ Usage: build_visualization.sh [options]
 
 Options:
   --root PATH          Base directory for visualization tree (default: this script's directory)
-  --optix-dir PATH     Use local OptiX headers directory (must contain include/).
-                       When omitted, headers are downloaded from GitHub automatically.
   --build-type TYPE    CMake build type (default: Release)
   --generator NAME     CMake generator (default: Ninja if available)
   --jobs N             Parallel build jobs (default: logical CPU count)
@@ -35,7 +32,6 @@ Options:
 Examples:
   ./build_visualization.sh
   ./build_visualization.sh --build-type RelWithDebInfo
-  ./build_visualization.sh --optix-dir /usr/local/NVIDIA-OptiX-SDK-8.0.0-linux64-x86_64
 EOF
 }
 
@@ -98,7 +94,6 @@ detect_cuda_home() {
 }
 
 ROOT=""
-OPTIX_DIR="${OPTIX_DIR:-}"
 BUILD_TYPE="Release"
 GENERATOR=""
 JOBS=0
@@ -113,15 +108,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --root=*)
       ROOT="${1#*=}"
-      shift
-      ;;
-    --optix-dir)
-      require_value "$1" "${2:-}"
-      OPTIX_DIR="$2"
-      shift 2
-      ;;
-    --optix-dir=*)
-      OPTIX_DIR="${1#*=}"
       shift
       ;;
     --build-type)
@@ -215,11 +201,6 @@ else
 fi
 printf '  Jobs:        %s\n' "${JOBS}"
 printf '  CUDA_HOME:   %s\n' "${CUDA_HOME}"
-if [[ -n "${OPTIX_DIR}" ]]; then
-  printf '  OptiX SDK:   %s\n' "${OPTIX_DIR}"
-else
-  printf '  OptiX SDK:   (auto-detect / download)\n'
-fi
 printf '\n'
 
 # ── optional clean ───────────────────────────────────────────────────────────
@@ -242,10 +223,6 @@ cmake_args+=(-B "${BUILD_DIR}")
 cmake_args+=("-DCMAKE_BUILD_TYPE=${BUILD_TYPE}")
 cmake_args+=("-DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}")
 cmake_args+=("-DBUILD_PYTHON_BINDINGS=ON")
-
-if [[ -n "${OPTIX_DIR}" ]]; then
-  cmake_args+=("-DOPTIX_ROOT=${OPTIX_DIR}")
-fi
 
 run_checked "Superbuild configure" cmake "${cmake_args[@]}"
 

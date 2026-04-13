@@ -22,10 +22,6 @@ set(_ip "${CMAKE_INSTALL_PREFIX}")
 
 # ── options ──────────────────────────────────────────────────────────────────
 
-set(OPTIX_ROOT "" CACHE PATH
-    "Path to a local NVIDIA OptiX SDK (must contain an include/ directory). "
-    "When empty the headers are downloaded automatically from GitHub.")
-
 option(BUILD_PYTHON_BINDINGS
     "Build pybind11 Python bindings for GaussianRendererCore" OFF)
 
@@ -35,28 +31,14 @@ option(BUILD_VISGL  "Build the VisRTX OpenGL device" ON)
 
 set(ANARI_VERSION  "v0.15.0" CACHE STRING "ANARI-SDK git tag")
 set(VISRTX_VERSION "v0.13.0" CACHE STRING "VisRTX git tag")
-set(OPTIX_VERSION  "v9.1.0"  CACHE STRING "OptiX SDK git tag to download")
+
+set(OPTIX_VERSION "9.0" CACHE STRING "OptiX version for VisRTX to download")
+set_property(CACHE OPTIX_VERSION PROPERTY STRINGS "7.7" "8.0" "8.1" "9.0")
 
 if(BUILD_VISRTX OR BUILD_VISGL)
   set(_need_visrtx TRUE)
 else()
   set(_need_visrtx FALSE)
-endif()
-
-# ── resolve OptiX SDK headers ────────────────────────────────────────────────
-
-if(NOT OPTIX_ROOT OR NOT EXISTS "${OPTIX_ROOT}/include")
-  include(FetchContent)
-  FetchContent_Declare(optix_headers
-    GIT_REPOSITORY https://github.com/NVIDIA/optix-dev.git
-    GIT_TAG        ${OPTIX_VERSION}
-    GIT_SHALLOW    ON
-  )
-  FetchContent_GetProperties(optix_headers)
-  if(NOT optix_headers_POPULATED)
-    FetchContent_Populate(optix_headers)
-  endif()
-  set(OPTIX_ROOT "${optix_headers_SOURCE_DIR}" CACHE PATH "" FORCE)
 endif()
 
 # ── build type default ───────────────────────────────────────────────────────
@@ -84,7 +66,6 @@ message(STATUS "Install prefix:  ${_ip}")
 message(STATUS "ANARI version:   ${ANARI_VERSION}")
 message(STATUS "VisRTX version:  ${VISRTX_VERSION}")
 message(STATUS "OptiX version:   ${OPTIX_VERSION}")
-message(STATUS "OptiX SDK:       ${OPTIX_ROOT}")
 message(STATUS "Python bindings: ${BUILD_PYTHON_BINDINGS}")
 message(STATUS "Helide device:   ${BUILD_HELIDE}")
 message(STATUS "VisRTX RTX dev:  ${BUILD_VISRTX}")
@@ -122,16 +103,15 @@ if(_need_visrtx)
     GIT_REPOSITORY  https://github.com/NVIDIA/VisRTX.git
     GIT_TAG         ${VISRTX_VERSION}
     GIT_SHALLOW     ON
-    LIST_SEPARATOR  "|"
     CMAKE_ARGS
       -DCMAKE_BUILD_TYPE=${_bt}
       -DCMAKE_INSTALL_PREFIX:PATH=${_ip}
-      "-DCMAKE_PREFIX_PATH:STRING=${_ip}|${OPTIX_ROOT}"
-      -DOptiX_ROOT:PATH=${OPTIX_ROOT}
+      -DCMAKE_PREFIX_PATH:PATH=${_ip}
       -DVISRTX_BUILD_RTX_DEVICE=${BUILD_VISRTX}
       -DVISRTX_BUILD_GL_DEVICE=${BUILD_VISGL}
       -DVISRTX_BUILD_TESTS=ON
       -DCMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES}
+      -DOPTIX_FETCH_VERSION=${OPTIX_VERSION}
     BUILD_COMMAND
       ${CMAKE_COMMAND} --build <BINARY_DIR> --config ${_bt} --parallel
     INSTALL_COMMAND
