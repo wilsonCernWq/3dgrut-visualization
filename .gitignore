@@ -10,6 +10,7 @@ imgui.ini
 CLAUDE.md
 .venv/
 .cursor/
+.cursor
 debug_**
 *.egg-info
 .idea

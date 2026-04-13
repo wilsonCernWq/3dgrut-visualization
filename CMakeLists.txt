@@ -65,6 +65,10 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 endif()
 
+if(NOT CMAKE_CUDA_ARCHITECTURES)
+  set(CMAKE_CUDA_ARCHITECTURES "native" CACHE STRING "" FORCE)
+endif()
+
 set(_bt "${CMAKE_BUILD_TYPE}")
 
 # ── summary ──────────────────────────────────────────────────────────────────
@@ -121,6 +125,7 @@ if(_need_visrtx)
       -DVISRTX_BUILD_RTX_DEVICE=${BUILD_VISRTX}
       -DVISRTX_BUILD_GL_DEVICE=${BUILD_VISGL}
       -DVISRTX_BUILD_TESTS=ON
+      -DCMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES}
     BUILD_COMMAND
       ${CMAKE_COMMAND} --build <BINARY_DIR> --config ${_bt} --parallel
     INSTALL_COMMAND
