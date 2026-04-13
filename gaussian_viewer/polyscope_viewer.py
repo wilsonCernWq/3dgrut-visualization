@@ -37,10 +37,6 @@ import polyscope.imgui as psim
 # ---------------------------------------------------------------------------
 
 
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
 def _ensure_omegaconf_resolvers() -> None:
     """Register custom resolvers used by repo YAML (normally done in train.py / threedgrut.utils.misc)."""
     from omegaconf import OmegaConf
@@ -81,9 +77,12 @@ def _load_grut_config(method: Literal["3dgrt", "3dgut"], config_name: str | None
 
     _ensure_omegaconf_resolvers()
 
-    cfg_dir = _repo_root() / "configs"
+    cfg_dir = Path.cwd() / "configs"
     if not cfg_dir.is_dir():
-        raise FileNotFoundError(f"Hydra configs not found at {cfg_dir} (is this the 3DGRUT repo root?)")
+        raise FileNotFoundError(
+            f"Hydra configs not found at {cfg_dir}. Please run this command from the 3DGRUT "
+            "repository root, or ensure a 'configs' directory exists in your current working directory."
+        )
 
     name = config_name
     if not name:
