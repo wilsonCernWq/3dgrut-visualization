@@ -107,7 +107,6 @@ def _fov2focal(fov_radians: float, pixels: int) -> float:
 def _grut_batch_from_polyscope(window_w: int, window_h: int, device):
     """Build a ``Batch`` from the current polyscope view (same convention as ``trainer_ps_gui``)."""
     import torch
-
     from threedgrut.datasets.protocols import Batch
 
     view_params = ps.get_view_camera_parameters()

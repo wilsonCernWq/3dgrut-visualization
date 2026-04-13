@@ -17,6 +17,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def set_custom_cugl_bindings():
     import polyscope as ps
 
@@ -42,6 +43,7 @@ def set_custom_cugl_bindings():
         ),
     }
     ps.set_device_interop_funcs(ps_device_func_dict)
+
 
 def initialize_cugl_interop():
     try:

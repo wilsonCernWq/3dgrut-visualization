@@ -7,12 +7,10 @@ name = "gaussian-viewer"
 version = "0.1.0"
 description = "3D Gaussian Splat viewer with ANARI/VisRTX renderer and Python bindings"
 readme = "README.md"
-license = {text = "MIT"}
-authors = [
-    {name = "Qi Wu", email = "wilson.over.cloud@gmail.com"}
-]
+license = { text = "MIT" }
+authors = [{ name = "Qi Wu", email = "wilson.over.cloud@gmail.com" }]
 requires-python = ">=3.11"
-dependencies = ["numpy", "polyscope>=2.6.0"]
+dependencies = ["numpy", "polyscope>=2.6.0", "black==26.3.1", "isort==5.13.0"]
 
 [project.scripts]
 polyscope-viewer = "gaussian_viewer.polyscope_viewer:main"
