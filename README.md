@@ -2,7 +2,7 @@
 
 3DGRUT VIS is a high-performance 3D Gaussian Splatting visualization engine tightly integrated with the [3dgrut](https://github.com/nv-tlabs/3dgrut) repository, leveraging [ANARI](https://github.com/KhronosGroup/ANARI-SDK) and [VisRTX](https://github.com/NVIDIA/VisRTX) rendering backends. It provides both native C++ interactive and headless viewers, as well as Python bindings and a flexible [Polyscope](https://polyscope.run/)-based interactive viewer.
 
-![Gaussian Viewer Screenshot](gaussian_viewer.png)
+![Gaussian Viewer Screenshot](teaser.jpg)
 
 ## Features
 
