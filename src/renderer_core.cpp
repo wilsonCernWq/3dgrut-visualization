@@ -174,6 +174,7 @@ bool GaussianRendererCore::init(const InitOptions &options, std::string *errorMe
   m_sceneBounds = computeSceneBounds(m_data);
   m_scaleFactor = options.scaleFactor;
   m_useFloat32Color = options.useFloat32Color;
+  m_useSRGB = options.useSRGB;
   m_frameSize = options.frameSize;
   m_rendererConfig = options.rendererConfig;
   computeCameraHeuristics();
@@ -223,7 +224,10 @@ bool GaussianRendererCore::init(const InitOptions &options, std::string *errorMe
   m_cameraDirty = true;
   m_rendererDirty = true;
 
-  anari::setParameter(m_device, m_frameObj, kChannelColor, m_useFloat32Color ? ANARI_FLOAT32_VEC4 : ANARI_UFIXED8_RGBA_SRGB);
+  ANARIDataType colorFmt = ANARI_FLOAT32_VEC4;
+  if (!m_useFloat32Color)
+    colorFmt = m_useSRGB ? ANARI_UFIXED8_RGBA_SRGB : ANARI_UFIXED8_VEC4;
+  anari::setParameter(m_device, m_frameObj, kChannelColor, colorFmt);
   anari::setParameter(m_device, m_frameObj, kChannelDepth, ANARI_FLOAT32);
   anari::setParameter(m_device, m_frameObj, "camera", m_cameraObj);
   anari::setParameter(m_device, m_frameObj, "renderer", m_rendererObj);

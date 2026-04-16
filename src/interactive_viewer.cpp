@@ -61,9 +61,12 @@
 #include <cstring>
 #include <functional>
 #include <iomanip>
+#include <iostream>
 #include <mutex>
 #include <sstream>
 #include <thread>
+
+#include "args.hxx"
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  Synchronization primitives (same pattern as vidi::TransactionalValue /
@@ -785,51 +788,56 @@ static void glfwCharCb(GLFWwindow *window, unsigned int c) { ImGui_ImplGlfw_Char
 //  Main
 // ═══════════════════════════════════════════════════════════════════════════════
 
-static void printUsage(const char *argv0) {
-  printf("Usage: %s <path.ply> [options]\n", argv0);
-  printf("  --library NAME          ANARI library (default: visrtx)\n");
-  printf("  --scale-factor F        Multiply Gaussian scales (default: 1.0)\n");
-  printf("  --opacity-threshold T   Min opacity to keep (default: 0.05)\n");
-  printf("  --resolution WxH        Window resolution (default: 1920x1080)\n");
-  printf("\nControls:\n");
-  printf("  LMB drag    Orbit\n");
-  printf("  RMB drag    Pan\n");
-  printf("  Scroll      Zoom\n");
-  printf("  W/S         Dolly forward/backward\n");
-  printf("  A/D         Strafe left/right\n");
-  printf("  Q/E         Orbit pitch (up/down)\n");
-  printf("  G           Toggle GUI\n");
-  printf("  S           Screenshot\n");
-  printf("  Escape      Quit\n");
-}
-
 int main(int argc, char *argv[]) {
-  if (argc < 2) {
-    printUsage(argv[0]);
+  args::ArgumentParser parser("Interactive 3DGS viewer with real-time ANARI rendering.",
+                              "Controls: LMB=Orbit  RMB=Pan  Scroll=Zoom  W/S=Dolly  A/D=Strafe  Q/E=Pitch  G=GUI  S=Screenshot  Esc=Quit");
+  args::HelpFlag        help        (parser, "help",    "Show this help message and exit",                                    {'h', "help"});
+  args::Positional<std::string> plyArg(parser, "path.ply", "Path to input .ply file");
+  args::ValueFlag<std::string>  libraryArg   (parser, "NAME", "ANARI library to load (default: visrtx)",                    {"library"});
+  args::ValueFlag<std::string>  resolutionArg(parser, "WxH",  "Initial window resolution (default: 1920x1080)",             {"resolution"});
+  args::ValueFlag<int>          sppArg       (parser, "N",    "Initial samples per pixel (default: 1)",                     {"spp"});
+  args::ValueFlag<float>        scaleArg     (parser, "F",    "Global Gaussian scale multiplier (default: 1.0)",             {"scale-factor"});
+  args::ValueFlag<float>        opacityArg   (parser, "T",    "Discard Gaussians below this opacity (default: 0.05)",       {"opacity-threshold"});
+  args::Flag                    float32Arg   (parser, "float32", "Use 32-bit float framebuffer instead of uint8",           {"float32"});
+  args::Flag                    noSrgbArg    (parser, "no-srgb", "Use linear uint8 output instead of sRGB (ignored with --float32)", {"no-srgb"});
+
+  try {
+    parser.ParseCLI(argc, argv);
+  } catch (const args::Help &) {
+    std::cout << parser;
+    return 0;
+  } catch (const args::ParseError &e) {
+    std::cerr << "Error: " << e.what() << "\n\n" << parser;
     return 1;
   }
 
-  std::string plyPath = argv[1];
-  std::string libraryName = "visrtx";
-  float scaleFactor = 1.0f;
-  float opacityThreshold = 0.05f;
-  uvec2 winSize = {1920, 1080};
+  if (!plyArg) {
+    std::cerr << "Error: missing required argument <path.ply>\n\n" << parser;
+    return 1;
+  }
 
-  for (int i = 2; i < argc; i++) {
-    if (std::strcmp(argv[i], "--library") == 0 && i + 1 < argc)
-      libraryName = argv[++i];
-    else if (std::strcmp(argv[i], "--scale-factor") == 0 && i + 1 < argc)
-      scaleFactor = std::strtof(argv[++i], nullptr);
-    else if (std::strcmp(argv[i], "--opacity-threshold") == 0 && i + 1 < argc)
-      opacityThreshold = std::strtof(argv[++i], nullptr);
-    else if (std::strcmp(argv[i], "--resolution") == 0 && i + 1 < argc) {
-      unsigned w = 0, h = 0;
-      if (std::sscanf(argv[++i], "%ux%u", &w, &h) == 2 && w > 0 && h > 0)
-        winSize = {w, h};
-    } else {
-      printUsage(argv[0]);
+  const std::string plyPath     = args::get(plyArg);
+  const std::string libraryName = libraryArg ? args::get(libraryArg) : "visrtx";
+  const float scaleFactor       = scaleArg   ? args::get(scaleArg)   : 1.0f;
+  const float opacityThreshold  = opacityArg ? args::get(opacityArg) : 0.05f;
+  const int   spp               = sppArg     ? args::get(sppArg)     : 1;
+  const bool  useFloat32        = bool(float32Arg);
+  const bool  useSRGB           = !bool(noSrgbArg);
+
+  if (spp <= 0) {
+    std::cerr << "Error: --spp must be a positive integer\n";
+    return 1;
+  }
+
+  uvec2 winSize = {1920, 1080};
+  if (resolutionArg) {
+    unsigned w = 0, h = 0;
+    const std::string &res = args::get(resolutionArg);
+    if (std::sscanf(res.c_str(), "%ux%u", &w, &h) != 2 || w == 0 || h == 0) {
+      std::cerr << "Error: invalid resolution '" << res << "', expected WxH (e.g. 1920x1080)\n";
       return 1;
     }
+    winSize = {w, h};
   }
 
   // ── GLFW + OpenGL ─────────────────────────────────────────────────────────
@@ -866,6 +874,7 @@ int main(int argc, char *argv[]) {
   App app;
   app.window = window;
   app.config.scaleFactor = scaleFactor;
+  app.config.spp = spp;
 
   InitOptions options;
   options.plyPath = plyPath;
@@ -873,7 +882,9 @@ int main(int argc, char *argv[]) {
   options.scaleFactor = scaleFactor;
   options.opacityThreshold = opacityThreshold;
   options.frameSize = winSize;
-  options.rendererConfig.spp = 1;
+  options.useFloat32Color = useFloat32;
+  options.useSRGB = useSRGB;
+  options.rendererConfig.spp = spp;
 
   std::string error_message;
   if (!app.renderer_core.init(options, &error_message)) {

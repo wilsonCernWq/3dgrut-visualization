@@ -37,64 +37,88 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 
-static void printUsage(const char *argv0) {
-  printf("Usage: %s <path.ply> [options]\n", argv0);
-  printf("  --library NAME          ANARI library (default: visrtx)\n");
-  printf("  --scale-factor F        Multiply Gaussian scales (default: 1.0)\n");
-  printf("  --opacity-threshold T   Min opacity to keep (default: 0.05)\n");
-  printf("  --output FILE           Output PNG path (default: "
-         "gaussian_viewer.png)\n");
-  printf("  --spp N                 Samples per pixel (default: 128)\n");
-  printf("  --resolution WxH        Image resolution (default: 3840x2160)\n");
-}
+#include "args.hxx"
 
 int main(int argc, char *argv[]) {
-  if (argc < 2) {
-    printUsage(argv[0]);
+  args::ArgumentParser parser("Render a 3DGS .ply scene to a PNG image using ANARI.");
+  args::HelpFlag        help        (parser, "help",      "Show this help message and exit",                                    {'h', "help"});
+  args::Positional<std::string> plyArg(parser, "path.ply", "Path to input .ply file");
+  args::ValueFlag<std::string>  libraryArg   (parser, "NAME",  "ANARI library to load (default: visrtx)",                    {"library"});
+  args::ValueFlag<std::string>  outputArg    (parser, "FILE",  "Output PNG path (default: gaussian_viewer.png)",              {"output"});
+  args::ValueFlag<std::string>  resolutionArg(parser, "WxH",   "Image resolution (default: 3840x2160)",                      {"resolution"});
+  args::ValueFlag<int>          sppArg       (parser, "N",     "Samples per pixel (default: 128)",                           {"spp"});
+  args::ValueFlag<float>        scaleArg     (parser, "F",     "Global Gaussian scale multiplier (default: 1.0)",             {"scale-factor"});
+  args::ValueFlag<float>        opacityArg   (parser, "T",     "Discard Gaussians below this opacity (default: 0.05)",       {"opacity-threshold"});
+  args::ValueFlag<float>        ambientArg   (parser, "F",     "Ambient light intensity (default: 1.0)",                     {"ambient-radiance"});
+  args::ValueFlag<std::string>  bgColorArg   (parser, "R,G,B", "Background colour, floats 0-1 (default: 0.1,0.1,0.1)",      {"bg-color"});
+  args::Flag                    float32Arg   (parser, "float32", "Use 32-bit float framebuffer instead of uint8",            {"float32"});
+  args::Flag                    noSrgbArg    (parser, "no-srgb", "Use linear uint8 output instead of sRGB (ignored with --float32)", {"no-srgb"});
+
+  try {
+    parser.ParseCLI(argc, argv);
+  } catch (const args::Help &) {
+    std::cout << parser;
+    return 0;
+  } catch (const args::ParseError &e) {
+    std::cerr << "Error: " << e.what() << "\n\n" << parser;
     return 1;
   }
 
-  std::string plyPath = argv[1];
-  std::string libraryName = "visrtx";
-  float scaleFactor = 1.0f;
-  float opacityThreshold = 0.05f;
-  std::string outputPath = "gaussian_viewer.png";
-  int spp = 128;
-  uvec2 imageSize = {3840, 2160};
+  if (!plyArg) {
+    std::cerr << "Error: missing required argument <path.ply>\n\n" << parser;
+    return 1;
+  }
 
-  for (int i = 2; i < argc; i++) {
-    if (std::strcmp(argv[i], "--library") == 0 && i + 1 < argc)
-      libraryName = argv[++i];
-    else if (std::strcmp(argv[i], "--scale-factor") == 0 && i + 1 < argc)
-      scaleFactor = std::strtof(argv[++i], nullptr);
-    else if (std::strcmp(argv[i], "--opacity-threshold") == 0 && i + 1 < argc)
-      opacityThreshold = std::strtof(argv[++i], nullptr);
-    else if (std::strcmp(argv[i], "--output") == 0 && i + 1 < argc)
-      outputPath = argv[++i];
-    else if (std::strcmp(argv[i], "--spp") == 0 && i + 1 < argc)
-      spp = std::atoi(argv[++i]);
-    else if (std::strcmp(argv[i], "--resolution") == 0 && i + 1 < argc) {
-      unsigned w = 0, h = 0;
-      if (std::sscanf(argv[++i], "%ux%u", &w, &h) == 2 && w > 0 && h > 0)
-        imageSize = {w, h};
-      else {
-        fprintf(stderr, "Invalid resolution format, use WxH (e.g. 1920x1080)\n");
-        return 1;
-      }
-    } else {
-      printUsage(argv[0]);
+  const std::string plyPath      = args::get(plyArg);
+  const std::string libraryName  = libraryArg  ? args::get(libraryArg)  : "visrtx";
+  const std::string outputPath   = outputArg   ? args::get(outputArg)   : "gaussian_viewer.png";
+  const float scaleFactor        = scaleArg    ? args::get(scaleArg)    : 1.0f;
+  const float opacityThreshold   = opacityArg  ? args::get(opacityArg)  : 0.05f;
+  const float ambientRadiance    = ambientArg  ? args::get(ambientArg)  : 1.0f;
+  const int   spp                = sppArg      ? args::get(sppArg)      : 128;
+  const bool  useFloat32         = bool(float32Arg);
+  const bool  useSRGB            = !bool(noSrgbArg);
+
+  if (spp <= 0) {
+    std::cerr << "Error: --spp must be a positive integer\n";
+    return 1;
+  }
+
+  uvec2 imageSize = {3840, 2160};
+  if (resolutionArg) {
+    unsigned w = 0, h = 0;
+    const std::string &res = args::get(resolutionArg);
+    if (std::sscanf(res.c_str(), "%ux%u", &w, &h) != 2 || w == 0 || h == 0) {
+      std::cerr << "Error: invalid resolution '" << res << "', expected WxH (e.g. 1920x1080)\n";
       return 1;
     }
+    imageSize = {w, h};
+  }
+
+  vec3 bgColor = {0.1f, 0.1f, 0.1f};
+  if (bgColorArg) {
+    float r = 0, g = 0, b = 0;
+    const std::string &col = args::get(bgColorArg);
+    if (std::sscanf(col.c_str(), "%f,%f,%f", &r, &g, &b) != 3) {
+      std::cerr << "Error: invalid --bg-color '" << col << "', expected R,G,B (e.g. 0.1,0.1,0.1)\n";
+      return 1;
+    }
+    bgColor = {r, g, b};
   }
 
   InitOptions options;
-  options.plyPath = plyPath;
-  options.libraryName = libraryName;
-  options.scaleFactor = scaleFactor;
-  options.opacityThreshold = opacityThreshold;
-  options.frameSize = imageSize;
-  options.rendererConfig.spp = spp;
+  options.plyPath            = plyPath;
+  options.libraryName        = libraryName;
+  options.scaleFactor        = scaleFactor;
+  options.opacityThreshold   = opacityThreshold;
+  options.frameSize          = imageSize;
+  options.useFloat32Color    = useFloat32;
+  options.useSRGB            = useSRGB;
+  options.rendererConfig.spp             = spp;
+  options.rendererConfig.ambientRadiance = ambientRadiance;
+  options.rendererConfig.bgColor         = {bgColor[0], bgColor[1], bgColor[2], 1.f};
 
   GaussianRendererCore renderer;
   std::string errorMessage;

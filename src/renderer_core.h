@@ -60,7 +60,8 @@ struct InitOptions {
   float opacityThreshold{0.05f};     // discard Gaussians below this opacity
   uvec2 frameSize{1920, 1080};       // initial framebuffer resolution
   RendererConfig rendererConfig{};   // initial renderer settings
-  bool useFloat32Color{false};       // true = FLOAT32_VEC4, false = UFIXED8_RGBA_SRGB
+  bool useFloat32Color{false};       // true = FLOAT32_VEC4, false = uint8 (format chosen by useSRGB)
+  bool useSRGB{true};               // (ignored when useFloat32Color=true) true = UFIXED8_RGBA_SRGB, false = UFIXED8_VEC4
 };
 
 // Binding-friendly description of a mapped CUDA framebuffer, free of ANARI
@@ -178,6 +179,7 @@ private:
   // --- User-facing parameters (latched, applied lazily) -------------------
   float m_scaleFactor{1.f};
   bool m_useFloat32Color{false};
+  bool m_useSRGB{true};
   uvec2 m_frameSize{1920, 1080};
   CameraState m_camera;
   RendererConfig m_rendererConfig;

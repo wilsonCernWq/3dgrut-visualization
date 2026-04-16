@@ -135,7 +135,8 @@ PYBIND11_MODULE(_gaussian_renderer_core, m) {
       .def_readwrite("opacity_threshold", &InitOptions::opacityThreshold)
       .def_readwrite("frame_size", &InitOptions::frameSize)
       .def_readwrite("renderer_config", &InitOptions::rendererConfig)
-      .def_readwrite("use_float32_color", &InitOptions::useFloat32Color);
+      .def_readwrite("use_float32_color", &InitOptions::useFloat32Color)
+      .def_readwrite("use_srgb", &InitOptions::useSRGB);
 
   // --- MappedCUDAFrame ---------------------------------------------------
 
